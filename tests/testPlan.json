@@ -1,0 +1,14 @@
+[
+	{
+		"title": "Test 3",
+		"useSSL": true,
+		"standard_port": 443,
+		"standard_server": "127.0.0.1",
+		"page": "/api/test/query/1",
+		"method": "POST",
+		"format": "HTTP/1.1",
+		"headers": { "Content-Type": "application/json" },
+		"body": { },
+		"answerText": "good query 1"
+	}
+]
