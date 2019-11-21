@@ -5,6 +5,7 @@ import json
 import sys
 import argparse
 from datetime import datetime
+import time
 
 debugFlag = False
 
@@ -44,6 +45,54 @@ def createArgumentParser():
 	parser.add_argument ('-o', '--optionFile', required = False)
 	return parser
 
+def valueContainValueCheck(value1, value2):
+	if type(value1) == type('string'):
+		if value1.upper().find(value2.upper()) >= 0:
+			return True
+		else:
+			return False
+	if type(value1) == type(dict()) or type(value1) == type(list()):
+		checkResult = valueContainValue(value1, value2)
+		if checkResult == True:
+			return True
+		else:
+			return False
+	elif type(value1) == type(1) or type(value1) == type(True):
+		if value1 == value2:
+			return True
+		else:
+			return False
+	return False
+
+# value must be same types
+# value must be one of the types: int, bool, str, list, dict
+# if value type is int or bool then will check equal
+# if value type is str or list or dict then will check contain
+def valueContainValue(sourceValue, checkValue):
+	if type(sourceValue) != type(checkValue):
+		return False
+	if type(sourceValue) == type(dict()):
+		for key, keyValue in checkValue.items():
+			sourceKeyValue = sourceValue.get(key)
+			if sourceKeyValue == None:
+				return False
+			if valueContainValueCheck(sourceKeyValue, keyValue) != True:
+				return False
+		return True
+	elif type(sourceValue) == type([]):
+		for keyValue in checkValue:
+			result = False
+			for sourceKeyValue in sourceValue:
+				if valueContainValueCheck(sourceKeyValue, keyValue) == True:
+					result = True
+					break
+			if result == False:
+				return False
+		return True
+	else:
+		return valueContainValueCheck(sourceValue, checkValue)
+	return False
+
 def loadOptions(optionsFilePath):
 	options_file_ = os.getcwd() + '/options.json'
 	if optionsFilePath:
@@ -52,8 +101,10 @@ def loadOptions(optionsFilePath):
 		optionsData = json.load(f)
 	return optionsData
 
-def fillMessageData(messageData, headText, bodyText):
+def fillMessageData(messageData):
 	# HTTP have data with newline split
+	headText = messageData.get('headText', '')
+	bodyText = messageData.get('bodyText', '')
 	query_lines = headText.split('\n')
 	# HTTP firstline is splitted by ' '
 	query_line_words = query_lines[1].split()
@@ -144,7 +195,7 @@ def getAnswerItem(queryItem, options):
 						if findBodyValue == None:
 							allBody = False
 							break
-						elif findBodyValue.upper().find(bodyValue.upper()) < 0:
+						if valueContainValue(bodyValue, findBodyValue) != True:
 							allBody = False
 							break
 				if not allBody:
@@ -245,6 +296,7 @@ if __name__ == '__main__':
 		data = True
 		while data:
 			try:
+				time.sleep(1)
 				data = conn.recv(1024)
 			except socket.error:
 				break
@@ -266,8 +318,13 @@ if __name__ == '__main__':
 		writeLog(logFilePath, 'BODY: ' + query_body)
 		curConnectData['headText'] = query_head
 		curConnectData['bodyText'] = query_body
+		#
+		if query_head == '':
+			writeLog(logFilePath, 'ERROR: HEAD tag is empty')
+			conn.close()
+			continue
 		# parse query text to data
-		fillMessageData(curConnectData, query_head, query_body)
+		fillMessageData(curConnectData)
 		# end processing
 		itFin = False
 		if not curConnectData['body_json'] and curConnectData['body'].upper() == 'FIN':
