@@ -6,6 +6,7 @@ import sys
 import argparse
 from datetime import datetime
 import time
+import re
 
 debugFlag = False
 
@@ -144,23 +145,25 @@ def getAnswerItem(queryItem, options):
 	find_body = queryItem['body']
 	# filter
 	answerItem = None
+	
 	for curAnswer in options['answers']:
 		# full equal flag
 		flagFullEqual = True
+		
 		# check format
 		if curAnswer['filter_format'] == '':
 			flagFullEqual = False
-		elif find_format.upper().find(curAnswer['filter_format'].upper()) < 0:
+		elif find_format.upper().find(curAnswer['filter_format'].upper()) < 0 and re.fullmatch(curAnswer['filter_format'].upper(), find_format.upper()) == None:
 			continue
 		# check query type
 		if curAnswer['filter_type'] == '':
 			flagFullEqual = False
-		elif find_type.upper() != curAnswer['filter_type'].upper():
+		elif find_type.upper() != curAnswer['filter_type'].upper() and re.fullmatch(curAnswer['filter_type'].upper(), find_type.upper()) == None:
 			continue
 		# check page / resource
 		if curAnswer['filter_page'] == '':
 			flagFullEqual = False
-		elif find_page.upper() != curAnswer['filter_page'].upper():
+		elif find_page.upper() != curAnswer['filter_page'].upper() and re.fullmatch(curAnswer['filter_page'].upper(), find_page.upper()) == None:
 			continue
 		# check headers
 		if len(curAnswer['filter_headers']) == 0:
@@ -300,7 +303,10 @@ if __name__ == '__main__':
 				data = conn.recv(1024)
 			except socket.error:
 				break
-			sdata = data.decode()
+			try:
+				sdata = data.decode()
+			except:
+				sdata = data.decode('latin-1')
 			lines = sdata.split('\n')
 			curLine = ''
 			for ls in lines:
@@ -327,9 +333,9 @@ if __name__ == '__main__':
 		fillMessageData(curConnectData)
 		# end processing
 		itFin = False
-		if not curConnectData['body_json'] and curConnectData['body'].upper() == 'FIN':
+		if curConnectData['body_json'] != True and curConnectData['body'].strip().replace('\n', '').upper() == 'FIN':
 			itFin = True
-		else:
+		elif isinstance(curConnectData['body'], dict):
 			idValue = curConnectData['body'].get('id')
 			if idValue != None and idValue.upper() == 'FIN':
 				itFin = True
